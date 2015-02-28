@@ -1,0 +1,78 @@
+
+%    <<
+%        /arr 10 array
+%        /ptr -1
+%    >>
+
+    % <stack> any  stackpush  -
+    % push value on stack
+    /stackpush {  % s a
+        1 index /ptr get  % s a p
+        1 add             % s a p+=1        increment pointer value
+        3 copy            % s a p s a p
+        2 index /arr get  % s a p s a p R
+        3 1 roll          % s a p s R a p
+        exch              % s a p s R p a
+        put               % s a p s         put value in /arr
+        pop               % s a p
+        exch pop          % s p
+        /ptr exch put     %                 update /ptr
+    } def
+
+    % <stack>  stackpop  any
+    % pop value from stack
+    /stackpop {  % s
+        /ptr 2 copy         % s /ptr s /ptr
+        get                 % s /ptr ptr
+        2 index /arr get    % s /ptr ptr arr
+        1 index get         % s /ptr ptr any
+        4 1 roll            % any s /ptr ptr
+        1 sub               % any s /ptr ptr-=1
+        put                 % any
+    } def
+
+    % /var  ++  -
+    /++ {
+        dup   % /var /var
+        load  % /var var
+        1     % /var var 1
+        add   % /var var+1
+        store %
+    } def
+
+    % <stack>  stackisempty  bool
+    % test whether stack is empty
+    /stackisempty {
+        /ptr get 0 lt
+    } def
+
+    % (expression)  evaluate  number
+    /evaluate {
+        <<
+            /evstack << /arr 10 array /ptr -1 >>
+            /integertype { }   % do nothing
+            /realtype 1 index  % duplicate the integertype procedure
+            /nametype { evstack exch stackpush }
+            /+ { add }
+            /- { sub }
+            /* { mul }
+            /  { div } % a bare slash yields a null-name
+        >> begin
+        dup print ( = ) print
+
+        { % (str)
+            token not {exit} if  % (rem) tok
+            exch /rem exch def
+            dup type exec
+            rem
+        } loop
+        {
+            evstack stackisempty { exit } if
+            evstack stackpop exec
+        } loop
+        =
+        end
+    } def
+
+    (5 + 5) evaluate
+    (2 * 3 + 4) evaluate
