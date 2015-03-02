@@ -31,6 +31,14 @@
         put                 % any
     } def
 
+    % <stack>  stacktop  any
+    % peek at the top of stack non-destructively
+    /stacktop {
+        dup /arr get   % s arr
+        exch /ptr get  % arr ptr
+        get
+    } def
+
     % /var  ++  -
     /++ {
         dup   % /var /var
@@ -51,22 +59,49 @@
         /integertype { }   % do nothing
         /realtype 1 index  % duplicate the integertype procedure
         /nametype {
-            mode /left eq {
+            %mode /left eq {
                 /oper exch def
                 %pstack()=
-                evstack stackisempty not {
-                    evstack stackpop
-                    load 0 get
-                    exec
-                } if
+                {
+                    evstack stackisempty { exit } if
+                    oper %/oper load load
+                    evstack stacktop load 
+                    opcmp
+                    {
+                        evstack stackpop
+                        load 0 get
+                        exec
+                    }{
+                        exit
+                    } ifelse
+                } loop
                 evstack /oper load stackpush % load oper to avoid executing
-            } if
-            mode /right eq { evstack exch stackpush } if
+            %} if
+            %mode /right eq { evstack exch stackpush } if
         }
-        /+ [{ add }]
-        /- [{ sub }]
-        /* [{ mul }]
-        /  [{ div }]
+        %op  proc prec left-assoc?
+        /+ [{ add } 2 true]
+        /- [{ sub } 2 true]
+        /* [{ mul } 3 true]
+        /  [{ div } 3 true]
+        /opcmp { % o1 o2  opcmp  bool
+            mode /right eq { pop pop false }{
+            mode /left eq { pop pop true }{
+
+                1 index 2 get    % o1 o2 o1assoc
+                3 copy pop       % o1 o2 o1assoc o1 o2
+                1 get exch
+                1 get exch       % o1 o2 o1assoc o1prec o2prec
+                3 copy le and    % o1 o2 o1assoc o1prec o2prec bool
+                4 1 roll         % o1 o2 bool o1assoc o1prec o2prec
+                lt exch not and  % o1 o2 bool bool
+                or               % o1 o2 bool
+                3 1 roll pop pop % bool
+
+            } ifelse
+            } ifelse
+
+        } def
     >> def
 
     % (expression) mode  evaluate  number
@@ -94,4 +129,6 @@
 
     (5 + 5) /right evaluate
     (2 * 3 + 4) /left evaluate
+    (2 * 3 + 4 * 9) /full evaluate
+    (3 * 3 * 3 + 4) /full evaluate
 
