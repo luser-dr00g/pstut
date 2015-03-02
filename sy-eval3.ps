@@ -1,0 +1,97 @@
+
+%    <<
+%        /arr 10 array
+%        /ptr -1
+%    >>
+
+    % <stack> any  stackpush  -
+    % push value on stack
+    /stackpush {  % s a
+        1 index /ptr get  % s a p
+        1 add             % s a p+=1        increment pointer value
+        3 copy            % s a p s a p
+        2 index /arr get  % s a p s a p R
+        3 1 roll          % s a p s R a p
+        exch              % s a p s R p a
+        put               % s a p s         put value in /arr
+        pop               % s a p
+        exch pop          % s p
+        /ptr exch put     %                 update /ptr
+    } def
+
+    % <stack>  stackpop  any
+    % pop value from stack
+    /stackpop {  % s
+        /ptr 2 copy         % s /ptr s /ptr
+        get                 % s /ptr ptr
+        2 index /arr get    % s /ptr ptr arr
+        1 index get         % s /ptr ptr any
+        4 1 roll            % any s /ptr ptr
+        1 sub               % any s /ptr ptr-=1
+        put                 % any
+    } def
+
+    % /var  ++  -
+    /++ {
+        dup   % /var /var
+        load  % /var var
+        1     % /var var 1
+        add   % /var var+1
+        store %
+    } def
+
+    % <stack>  stackisempty  bool
+    % test whether stack is empty
+    /stackisempty {
+        /ptr get 0 lt
+    } def
+
+    /evdict << 
+        /evstack << /arr 10 array /ptr -1 >>
+        /integertype { }   % do nothing
+        /realtype 1 index  % duplicate the integertype procedure
+        /nametype {
+            mode /left eq {
+                /oper exch def
+                %pstack()=
+                evstack stackisempty not {
+                    evstack stackpop
+                    load 0 get
+                    exec
+                } if
+                evstack /oper load stackpush % load oper to avoid executing
+            } if
+            mode /right eq { evstack exch stackpush } if
+        }
+        /+ [{ add }]
+        /- [{ sub }]
+        /* [{ mul }]
+        /  [{ div }]
+    >> def
+
+    % (expression) mode  evaluate  number
+    /evaluate {
+
+        evdict begin
+        /mode exch def
+        dup print ( = ) print
+
+        { % (str)                  VVV accumulate results on the operand stack
+            token not {exit} if  % ... (rem) tok
+            exch /rem exch def   % ... tok
+            dup type exec        % ...
+            rem                  % ... rem
+        } loop
+        {
+            evstack stackisempty { exit } if
+            evstack stackpop
+            load 0 get
+            exec
+        } loop
+        =
+        end
+    } def
+
+    (5 + 5) /right evaluate
+    (2 * 3 + 4) /left evaluate
+
